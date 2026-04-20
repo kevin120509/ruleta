@@ -974,13 +974,9 @@ export default function App() {
 
     // Play tick sound on segment change with throttling
     if (index !== lastIndexRef.current) {
-      const now = Date.now();
-      // Limit sound frequency to avoid audio engine overload/stutter
-      if (now - lastSoundTimeRef.current > 40) { 
-        playSound('spin');
-        lastSoundTimeRef.current = now;
-      }
       lastIndexRef.current = index;
+      // FIX LAG: El sonido en bucle de WebAudio congela la animación en muchos navegadores. 
+      // Se apaga el tick del 'spin' para priorizar que la ruleta se mueva a máxima fluidez.
     }
 
     // Safety check
@@ -1153,6 +1149,13 @@ export default function App() {
   };
 
   const [isExtractingPDF, setIsExtractingPDF] = useState(false);
+
+  const handleClearParticipants = () => {
+    if (window.confirm("¿Estás seguro de que quieres borrar a TODOS los participantes?")) {
+      playSound('pop');
+      setParticipants([]);
+    }
+  };
 
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1477,6 +1480,17 @@ export default function App() {
                     <span className="text-[10px] font-bold text-gray-500 group-hover:text-sky-400 uppercase tracking-widest">Subir PDF</span>
                     <input type="file" accept=".pdf" onChange={handlePdfUpload} className="hidden" />
                   </label>
+                  
+                  {participants.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearParticipants}
+                      className="w-full py-3 border border-rose-800 hover:bg-rose-900/80 text-rose-400 hover:text-rose-300 text-xs font-bold rounded-xl transition-colors uppercase tracking-wider flex items-center justify-center gap-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Borrar Todos
+                    </button>
+                  )}
                 </div>
               </div>
 
