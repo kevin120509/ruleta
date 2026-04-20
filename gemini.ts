@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, Schema, Type } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 
 const apiKey = process.env.GEMINI_API_KEY || "";
 const genAI = new GoogleGenerativeAI(apiKey);
@@ -14,17 +14,17 @@ export const extractParticipantsFromText = async (rawText: string) => {
     generationConfig: {
       responseMimeType: "application/json",
       responseSchema: {
-        type: Type.ARRAY,
+        type: SchemaType.ARRAY,
         description: "Lista de participantes para un sorteo, extraída del texto.",
         items: {
-          type: Type.OBJECT,
+          type: SchemaType.OBJECT,
           properties: {
             name: {
-              type: Type.STRING,
+              type: SchemaType.STRING,
               description: "Nombre del participante (en mayúsculas)",
             },
             colonia: {
-              type: Type.STRING,
+              type: SchemaType.STRING,
               description: "Colonia del participante (en mayúsculas). Usa texto vacío si no se especifica.",
             },
           },
@@ -76,6 +76,6 @@ export const generatePresenterComment = async (contextType: 'WINNER' | 'ELIMINAT
     return result.response.text().replace(/"/g, '').trim();
   } catch (e) {
     console.error("Fallo al generar comentario con Gemini:", e);
-    return contextType === 'WINNER' ? \`¡Muchas felicidades a \${name}!\` : \`¡Suerte para la próxima, \${name}!\`;
+    return contextType === 'WINNER' ? `¡Muchas felicidades a ${name}!` : `¡Suerte para la próxima, ${name}!`;
   }
 };
