@@ -29,6 +29,8 @@ import { StarBackground } from './StarBackground';
 import Dashboard from './Dashboard';
 import fallaMp3 from './sonido/falla.mp3';
 import winMp3 from './sonido/premiado.mp3';
+import { extractParticipantsFromText, generatePresenterComment } from './gemini';
+import VirtualPresenter from './VirtualPresenter';
 
 // --- Constants ---
 const CANVAS_SIZE = 1000;
@@ -712,6 +714,7 @@ export default function App() {
   const [showAllPrizes, setShowAllPrizes] = useState(false);
   const [manualInput, setManualInput] = useState('');
   const [prizeInput, setPrizeInput] = useState('');
+  const [presenterMessage, setPresenterMessage] = useState<string | null>(null);
   const [prizes, setPrizes] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('prizes_mothers_day');
@@ -1151,60 +1154,73 @@ export default function App() {
     setPrizes(prev => prev.filter((_, i) => i !== index));
   };
 
+  const [isExtractingPDF, setIsExtractingPDF] = useState(false);
+
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     playSound('pop');
 
+    setIsExtractingPDF(true);
+    // UI feedback provisional
+    const loadingToast = document.createElement('div');
+    loadingToast.textContent = 'Procesando PDF con Inteligencia Artificial...';
+    loadingToast.className = 'fixed top-10 left-1/2 -translate-x-1/2 z-[9999] bg-pink-600 text-white px-6 py-3 rounded-full shadow-lg font-bold animate-pulse';
+    document.body.appendChild(loadingToast);
+
     try {
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      const newParticipants: Participant[] = [];
-
+      
+      let fullRawText = "";
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
-        // Join with newline to preserve structure
-        const text = textContent.items.map((item: any) => item.str).join('\n');
-
-        // Regex to capture full block until next number
-        // Looks for "Number. " then captures everything until the next "Number. " or end of string
-        const regex = /(\d+)\.\s+([\s\S]*?)(?=\n\d+\.\s+|$)/g;
-        let match;
-        while ((match = regex.exec(text)) !== null) {
-          const fullText = match[2].trim();
-
-          // Strategy: Split by newline. First line is Name, rest is Colonia.
-          // If only one line, we assume it's just the Name (or Name + Colonia on one line if PDF is weird)
-          const lines = fullText.split('\n').map(l => l.trim()).filter(l => l);
-          const name = lines[0] || "Participante";
-          const colonia = lines.slice(1).join(' ') || "";
-
-          newParticipants.push({
-            id: Date.now().toString(36) + Math.random().toString(36).substr(2),
-            name: name,
-            colonia: colonia
-          });
-        }
+        fullRawText += textContent.items.map((item: any) => item.str).join('\n') + "\n";
       }
+
+      const extractedData = await extractParticipantsFromText(fullRawText);
+      
+      const newParticipants: Participant[] = extractedData.map((p: any) => ({
+        id: Date.now().toString(36) + Math.random().toString(36).substring(2),
+        name: p.name || "Desconocido",
+        colonia: p.colonia || ""
+      }));
 
       if (newParticipants.length > 0) {
         setParticipants(prev => [...prev, ...newParticipants]);
-        alert(`Se importaron ${newParticipants.length} participantes.`);
+        alert(`¡La IA encontró e importó ${newParticipants.length} participantes con éxito!`);
       } else {
-        alert("No se pudieron encontrar participantes. Asegúrate de que el PDF tenga el formato '1. Nombre...'");
+        alert("La IA no pudo estructurar ningún participante en este PDF.");
       }
 
-    } catch (error) {
-      console.error("Error reading PDF:", error);
-      alert("Error al leer el PDF.");
+    } catch (error: any) {
+      console.error("Error leyendo PDF con IA:", error);
+      alert("Error procesando PDF. Verifica la consola o tu clave API.");
+    } finally {
+      document.body.removeChild(loadingToast);
+      setIsExtractingPDF(false);
+      e.target.value = '';
     }
-    e.target.value = '';
   };
 
   const confirmResult = () => {
     playSound('pop');
     if (!selectedResult) return;
+
+    // Llamada al Presentador Virtual AI
+    if (prizeName) {
+      generatePresenterComment('WINNER', selectedResult.name, prizeName).then(msg => {
+        setPresenterMessage(msg);
+        setTimeout(() => setPresenterMessage(null), 10000);
+      });
+    } else {
+      generatePresenterComment('ELIMINATED', selectedResult.name).then(msg => {
+        setPresenterMessage(msg);
+        setTimeout(() => setPresenterMessage(null), 10000);
+      });
+    }
+
     if (prizeName) {
       setWinners(prev => [{
         id: selectedResult.id,
@@ -1245,6 +1261,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-rose-950 text-rose-100 selection:bg-pink-500 selection:text-white flex flex-col">
+      {/* VIRTUAL PRESENTER */}
+      <VirtualPresenter message={presenterMessage} />
 
       {/* BACKGROUND DECOR */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
