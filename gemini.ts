@@ -54,28 +54,4 @@ export const extractParticipantsFromText = async (rawText: string) => {
   }
 };
 
-export const generatePresenterComment = async (contextType: 'WINNER' | 'ELIMINATED' | 'SPINNING', name?: string, prize?: string) => {
-  if (!apiKey || apiKey === "PLACEHOLDER_API_KEY") {
-    if (contextType === 'SPINNING') return `¡Mucha suerte a todos!`;
-    return contextType === 'WINNER' ? `¡Muchas felicidades a ${name}!` : `¡Suerte para la próxima, ${name}!`;
-  }
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-  let prompt = '';
-  
-  if (contextType === 'WINNER') {
-    prompt = `Actúa como un presentador de televisión divertido y entusiasta en un sorteo por el Día de las Madres. El jugador "${name}" acaba de ganar el premio: "${prize}". Genera un comentario corto celebrando (máximo 15 palabras). Sé jovial y alegre.`;
-  } else if (contextType === 'ELIMINATED') {
-    prompt = `Actúa como un presentador de televisión divertido en un sorteo por el Día de las Madres. El jugador "${name}" acaba de ser eliminado de la ruleta. Genera un comentario corto y simpático o sarcástico pero suave (máximo 15 palabras).`;
-  } else if (contextType === 'SPINNING') {
-    prompt = `Actúa como un presentador de televisión animado en el Día de las Madres. La ruleta acaba de empezar a girar. El objetivo es "${prize}". Genera un comentario muy corto (10 palabras máximo) deseando mucha suerte a todos los participantes en modo suspenso.`;
-  }
-
-  try {
-    const result = await model.generateContent(prompt);
-    return result.response.text().replace(/"/g, '').trim();
-  } catch (e) {
-    console.error("Fallo al generar comentario con Gemini:", e);
-    return contextType === 'WINNER' ? `¡Muchas felicidades a ${name}!` : `¡Suerte para la próxima, ${name}!`;
-  }
-};

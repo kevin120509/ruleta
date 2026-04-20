@@ -29,8 +29,7 @@ import { StarBackground } from './StarBackground';
 import Dashboard from './Dashboard';
 import fallaMp3 from './sonido/falla.mp3';
 import winMp3 from './sonido/premiado.mp3';
-import { extractParticipantsFromText, generatePresenterComment } from './gemini';
-import VirtualPresenter from './VirtualPresenter';
+import { extractParticipantsFromText } from './gemini';
 
 // --- Constants ---
 const CANVAS_SIZE = 1000;
@@ -714,7 +713,6 @@ export default function App() {
   const [showAllPrizes, setShowAllPrizes] = useState(false);
   const [manualInput, setManualInput] = useState('');
   const [prizeInput, setPrizeInput] = useState('');
-  const [presenterMessage, setPresenterMessage] = useState<string | null>(null);
   const [prizes, setPrizes] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('prizes_mothers_day');
@@ -1031,12 +1029,6 @@ export default function App() {
       ctx.resume();
     }
 
-    // Call virtual presenter for spinning
-    const currentPrize = mode === GameMode.PREP_PRIZE ? prizeName : 'eliminar al jugador con peor suerte';
-    generatePresenterComment('SPINNING', undefined, currentPrize).then(msg => {
-        setPresenterMessage(msg);
-    });
-
     // playSound('spin'); // handled in loop now
     setMode(GameMode.SPINNING);
 
@@ -1214,19 +1206,6 @@ export default function App() {
     playSound('pop');
     if (!selectedResult) return;
 
-    // Llamada al Presentador Virtual AI
-    if (prizeName) {
-      generatePresenterComment('WINNER', selectedResult.name, prizeName).then(msg => {
-        setPresenterMessage(msg);
-        setTimeout(() => setPresenterMessage(null), 10000);
-      });
-    } else {
-      generatePresenterComment('ELIMINATED', selectedResult.name).then(msg => {
-        setPresenterMessage(msg);
-        setTimeout(() => setPresenterMessage(null), 10000);
-      });
-    }
-
     if (prizeName) {
       setWinners(prev => [{
         id: selectedResult.id,
@@ -1267,8 +1246,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-rose-950 text-rose-100 selection:bg-pink-500 selection:text-white flex flex-col">
-      {/* VIRTUAL PRESENTER */}
-      <VirtualPresenter message={presenterMessage} />
 
       {/* BACKGROUND DECOR */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
