@@ -21,7 +21,7 @@ export const extractParticipantsFromText = async (rawText: string) => {
           properties: {
             name: {
               type: SchemaType.STRING,
-              description: "Nombre del participante (en mayúsculas)",
+              description: "Nombre completo del participante incluyendo sus apellidos (en MAYÚSCULAS y corrigiendo ortografía)",
             },
             colonia: {
               type: SchemaType.STRING,
@@ -35,8 +35,15 @@ export const extractParticipantsFromText = async (rawText: string) => {
   });
 
   const prompt = `
-  Extrae todos los participantes del siguiente texto en bruto proveniente de una captura PDF. 
-  La salida debe ajustarse de forma estricta al esquema JSON solicitado. Si la colonia no existe, envíala como "".
+  Extrae cuidadosamente todos los participantes del siguiente texto en bruto proveniente de una captura PDF. 
+
+  REGLAS ESTRICTAS DE EXTRACCIÓN:
+  1. Cada registro debe tener Nombre y Apellido(s).
+  2. Asigna correctamente la COLONIA a su participante. Si no hay, pon "".
+  3. CORRIGE cualquier error de ortografía o caracteres raros producidos por el escaneo del PDF.
+  4. MANTÉN DE FORMA ESTRICTA EL ORDEN de los participantes tal cual aparecen en el documento.
+
+  La salida debe ajustarse al esquema JSON solicitado.
 
   TEXTO:
   ---
