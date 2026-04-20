@@ -25,7 +25,7 @@ export const extractParticipantsFromText = async (rawText: string) => {
             },
             colonia: {
               type: SchemaType.STRING,
-              description: "Colonia del participante (en mayúsculas). Usa texto vacío si no se especifica.",
+              description: "ÚNICAMENTE el nombre de la colonia geográfica (en MAYÚSCULAS). Excluye anuncios o frases largas.",
             },
           },
           required: ["name", "colonia"],
@@ -42,6 +42,7 @@ export const extractParticipantsFromText = async (rawText: string) => {
   2. Asigna correctamente la COLONIA a su participante. Si no hay, pon "".
   3. CORRIGE cualquier error de ortografía o caracteres raros producidos por el escaneo del PDF.
   4. MANTÉN DE FORMA ESTRICTA EL ORDEN de los participantes tal cual aparecen en el documento.
+  5. EXCLUYE BASURA: El campo 'colonia' debe contener ÚNICAMENTE el nombre de la colonia / zona. ESTÁ PROHIBIDO incluir texto promocional (ej. "Renta de lavadoras", "La burbuja feliz", "Participa en la rifa") o fechas.
 
   La salida debe ajustarse al esquema JSON solicitado.
 
