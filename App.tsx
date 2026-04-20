@@ -1031,6 +1031,12 @@ export default function App() {
       ctx.resume();
     }
 
+    // Call virtual presenter for spinning
+    const currentPrize = mode === GameMode.PREP_PRIZE ? prizeName : 'eliminar al jugador con peor suerte';
+    generatePresenterComment('SPINNING', undefined, currentPrize).then(msg => {
+        setPresenterMessage(msg);
+    });
+
     // playSound('spin'); // handled in loop now
     setMode(GameMode.SPINNING);
 
