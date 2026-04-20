@@ -694,11 +694,11 @@ export default function App() {
   const [participants, setParticipants] = useState<Participant[]>(() => {
     try {
       // Changed storage key to force new list from code
-      const saved = localStorage.getItem('participants_valentine_v4');
-      return saved ? JSON.parse(saved) : INITIAL_PARTICIPANTS;
+      const saved = localStorage.getItem('participants_mothers_day');
+      return saved ? JSON.parse(saved) : [];
     } catch (e) {
       console.error("Error loading participants from localStorage", e);
-      return INITIAL_PARTICIPANTS;
+      return [];
     }
   });
 
@@ -714,23 +714,23 @@ export default function App() {
   const [prizeInput, setPrizeInput] = useState('');
   const [prizes, setPrizes] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('prizes_valentine');
+      const saved = localStorage.getItem('prizes_mothers_day');
       const parsed = saved ? JSON.parse(saved) : null;
       // Force default if null or empty array
-      return (parsed && parsed.length > 0) ? parsed : Array(5).fill("CENA ROMANTICA");
+      return (parsed && parsed.length > 0) ? parsed : [];
     } catch (e) {
       console.error("Error loading prizes from localStorage", e);
-      return Array(5).fill("CENA ROMANTICA");
+      return [];
     }
   });
 
   // --- Persistence Effects ---
   useEffect(() => {
-    localStorage.setItem('participants_valentine_v4', JSON.stringify(participants));
+    localStorage.setItem('participants_mothers_day', JSON.stringify(participants));
   }, [participants]);
 
   useEffect(() => {
-    localStorage.setItem('prizes_valentine', JSON.stringify(prizes));
+    localStorage.setItem('prizes_mothers_day', JSON.stringify(prizes));
   }, [prizes]);
 
   // --- Refs ---
@@ -1270,7 +1270,7 @@ export default function App() {
         {/* Festive Greeting */}
         <div className="hidden md:block">
           <h2 className="text-2xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-pink-200 to-rose-500 tracking-widest uppercase drop-shadow-[0_0_25px_rgba(244,63,94,0.6)] animate-pulse">
-            ¡FELIZ DÍA DEL AMOR Y LA AMISTAD!
+            ¡FELIZ DÍA DE LAS MADRES!
           </h2>
         </div>
       </header>
@@ -1319,7 +1319,7 @@ export default function App() {
               {mode === GameMode.IDLE ? 'Selecciona un modo para empezar' :
                 mode === GameMode.PREP_PRIZE ? (prizeName ? `PREMIO SELECCIONADO: ${prizeName}` : 'MODO: SORTEAR PREMIO') :
                   mode === GameMode.PREP_ELIMINATION ? 'MODO: ELIMINAR JUGADOR' :
-                    mode === GameMode.SPINNING ? 'GIRANDO POR AMOR...' :
+                    mode === GameMode.SPINNING ? 'GIRANDO POR MAMÁ...' :
                       'LISTO'}
             </span>
           </div>

@@ -32,24 +32,25 @@ export enum GameMode {
   RESULT = 'RESULT',
 }
 
-// Vibrant / Valentine palette for Dark Mode
+// Elegant Mother's Day palette for Dark Mode
 // Pairs of [Background Color, Text Color]
 export const WHEEL_COLORS: { bg: string; text: string }[] = [
-  { bg: '#FF0055', text: '#FFFFFF' }, // Hot Pink
-  { bg: '#FFCCD5', text: '#590d22' }, // Pale Pink
-  { bg: '#C9184A', text: '#FFFFFF' }, // Deep Red
-  { bg: '#FF758F', text: '#590d22' }, // Salmon Pink
-  { bg: '#800F2F', text: '#FFFFFF' }, // Burgundy
-  { bg: '#FF4D6D', text: '#FFFFFF' }, // Rose
-  { bg: '#FFF0F3', text: '#590d22' }, // Lavender Blush
-  { bg: '#A4133C', text: '#FFFFFF' }, // Crimson
+  { bg: '#FF69B4', text: '#FFFFFF' }, // Hot Pink
+  { bg: '#DDA0DD', text: '#FFFFFF' }, // Plum
+  { bg: '#FFB6C1', text: '#000000' }, // Light Pink
+  { bg: '#BA55D3', text: '#FFFFFF' }, // Medium Orchid
+  { bg: '#FFC0CB', text: '#000000' }, // Pink
+  { bg: '#DB7093', text: '#FFFFFF' }, // Pale Violet Red
+  { bg: '#FFE4E1', text: '#000000' }, // Misty Rose
+  { bg: '#C71585', text: '#FFFFFF' }, // Medium Violet Red
 ];
 
 export const CONFETTI_COLORS = [
-  '#FF0055',
-  '#FFCCD5',
-  '#C9184A',
-  '#FF758F',
-  '#800F2F',
+  '#FF69B4',
+  '#DDA0DD',
+  '#FFB6C1',
+  '#BA55D3',
+  '#FFC0CB',
+  '#FFD700', // Gold accent
   '#FFFFFF'
 ];
