@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PDF Extractor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    </script>
+  </head>
+  <body>
+    <h1>Extracted Data</h1>
+    <pre id="output">Loading...</pre>
+    <script>
+      async function extract() {
+        try {
+          const pdf = await window.pdfjsLib.getDocument(
+            "/RIFA DE SAN VALENTIN.pdf",
+          ).promise;
+          let fullText = "";
+
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const text = textContent.items.map((item) => item.str).join("\n"); // Join with newline to preserve structure
+            fullText += text + "\n";
+          }
+
+          // Parse logic similar to App.tsx
+          const participants = [];
+          // Look for "1. NAME" pattern
+          const regex = /(\d+)\.\s+([\s\S]*?)(?=\n\d+\.\s+|$)/g;
+          let match;
+
+          // If regex fails (simple list), try splitting by lines
+          // But let's verify the raw text first if regex fails
+
+          // Let's just output the raw text first to see the format, then I can parse it in my head or refine
+          // document.getElementById('output').textContent = fullText;
+
+          // Better: Attempt parsing and output JSON
+          while ((match = regex.exec(fullText)) !== null) {
+            const fullBlock = match[2].trim();
+            const lines = fullBlock
+              .split("\n")
+              .map((l) => l.trim())
+              .filter((l) => l);
+            const name = lines[0];
+            const colonia = lines.slice(1).join(" ");
+
+            participants.push({
+              id: match[1], // Use number as temporary ID
+              name: name,
+              colonia: colonia,
+            });
+          }
+
+          if (participants.length === 0) {
+            // Fallback: Try straight line splitting if it's just a list of names
+            const lines = fullText
+              .split("\n")
+              .filter((l) => l.trim().length > 0);
+            // document.getElementById('output').textContent = JSON.stringify({ raw: fullText }, null, 2);
+            document.getElementById("output").textContent = "RAW:\n" + fullText;
+            return;
+          }
+
+          document.getElementById("output").textContent = JSON.stringify(
+            participants,
+            null,
+            2,
+          );
+        } catch (e) {
+          document.getElementById("output").textContent = "Error: " + e.message;
+        }
+      }
+      extract();
+    </script>
+  </body>
+</html>
