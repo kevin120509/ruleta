@@ -1,17 +1,24 @@
-import React, { memo } from 'react';
-import { MapPin, X, Trophy, Trash2 } from 'lucide-react';
+import React, { memo, useEffect, useRef, useState } from 'react';
+import { Gift, MapPin, RotateCcw, Snowflake, Trash2, X } from 'lucide-react';
 import { Participant, Winner, Eliminated } from './types';
 
+type Tab = 'PLAYERS' | 'WINNERS' | 'ELIMINATED';
+
 interface DashboardProps {
-  activeTab: 'PLAYERS' | 'WINNERS' | 'ELIMINATED';
-  setActiveTab: (tab: 'PLAYERS' | 'WINNERS' | 'ELIMINATED') => void;
+  activeTab: Tab;
+  setActiveTab: (tab: Tab) => void;
   participants: Participant[];
   winners: Winner[];
   eliminated: Eliminated[];
+  /** true mientras gira o hay un resultado abierto: no se permite editar listas. */
+  locked: boolean;
   handleRemoveParticipant: (id: string) => void;
   handleReturnToWheel: (id: string, from: 'WINNERS' | 'ELIMINATED') => void;
+  handleClearHistory: () => void;
   playSound: (type: 'pop') => void;
 }
+
+const PAGE = 30;
 
 const Dashboard = memo(({
   activeTab,
@@ -19,160 +26,178 @@ const Dashboard = memo(({
   participants,
   winners,
   eliminated,
+  locked,
   handleRemoveParticipant,
   handleReturnToWheel,
-  playSound
+  handleClearHistory,
+  playSound,
 }: DashboardProps) => {
-  // --- Virtualization / Infinite Scroll State ---
-  const [visibleCount, setVisibleCount] = React.useState(30);
-  const observerTarget = React.useRef(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Reset visible count when tab changes
-  React.useEffect(() => {
-    setVisibleCount(30);
-  }, [activeTab]);
+  const total = activeTab === 'PLAYERS' ? participants.length : activeTab === 'WINNERS' ? winners.length : eliminated.length;
 
-  // Infinite Scroll Observer
-  React.useEffect(() => {
+  useEffect(() => setVisibleCount(PAGE), [activeTab]);
+
+  // Carga progresiva: el observador mira dentro de la caja con scroll (antes miraba la ventana).
+  useEffect(() => {
+    const target = sentinelRef.current;
+    if (!target) return;
     const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setVisibleCount((prev) => Math.min(prev + 30, 
-            activeTab === 'PLAYERS' ? participants.length : 
-            activeTab === 'WINNERS' ? winners.length : 
-            eliminated.length
-          ));
-        }
+      entries => {
+        if (entries[0].isIntersecting) setVisibleCount(v => Math.min(v + PAGE, total));
       },
-      { threshold: 0.1, rootMargin: '100px' }
+      { root: scrollRef.current, rootMargin: '200px' },
     );
-
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
-    }
-
+    observer.observe(target);
     return () => observer.disconnect();
-  }, [activeTab, participants.length, winners.length, eliminated.length]);
+  }, [activeTab, total, visibleCount]);
 
-  const visibleParticipants = participants.slice(0, visibleCount);
-  const visibleWinners = winners.slice(0, visibleCount);
-  const visibleEliminated = eliminated.slice(0, visibleCount);
+  const tabs: { id: Tab; label: string; count: number }[] = [
+    { id: 'PLAYERS', label: 'JUGADORES', count: participants.length },
+    { id: 'WINNERS', label: 'GANADORES', count: winners.length },
+    { id: 'ELIMINATED', label: 'ELIMINADOS', count: eliminated.length },
+  ];
+
+  const actionBtn = 'p-2 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed';
 
   return (
-    <div className="flex-1 w-full space-y-6">
-      <div className="flex p-1 bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-md">
-        {(['PLAYERS', 'WINNERS', 'ELIMINATED'] as const).map(tab => (
+    <div className="flex-1 w-full min-w-0 space-y-4">
+      <div className="flex flex-wrap items-center gap-3 justify-between">
+        <div className="flex p-1 rounded-2xl bg-night-950/80 border border-night-700 w-full sm:w-auto">
+          {tabs.map(tab => (
+            <button
+              type="button"
+              key={tab.id}
+              onClick={() => { playSound('pop'); setActiveTab(tab.id); }}
+              className={`flex-1 sm:flex-none px-3 sm:px-5 py-2.5 text-[11px] sm:text-xs font-extrabold rounded-xl tracking-wider transition-colors flex items-center justify-center gap-2 ${activeTab === tab.id ? 'bg-berry-600 text-white shadow-lg shadow-berry-900/40' : 'text-snow/55 hover:text-snow'}`}
+            >
+              {tab.label}
+              <span className={`min-w-[1.5rem] px-1.5 py-0.5 rounded-full text-[10px] ${activeTab === tab.id ? 'bg-white/20' : 'bg-night-800'}`}>{tab.count}</span>
+            </button>
+          ))}
+        </div>
+        {activeTab !== 'PLAYERS' && (winners.length > 0 || eliminated.length > 0) && (
           <button
-            key={tab}
-            onClick={() => { playSound('pop'); setActiveTab(tab); }}
-            className={`flex-1 py-3 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === tab ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/30' : 'text-gray-500 hover:text-gray-300'}
-              }`}
+            type="button"
+            onClick={handleClearHistory}
+            disabled={locked}
+            className="text-[11px] font-bold tracking-widest text-snow/50 hover:text-berry-400 flex items-center gap-1.5 disabled:opacity-30"
           >
-            {tab === 'PLAYERS' ? (
-              <>
-                JUGADORES
-              </>
-            ) : tab === 'WINNERS' ? 'GANADORES' : 'ELIMINADOS'}
+            <Trash2 className="w-3.5 h-3.5" /> LIMPIAR HISTORIAL
           </button>
-        ))}
+        )}
       </div>
 
-      <div className="bg-gray-900/40 rounded-3xl border border-gray-800 p-6 min-h-[400px] max-h-[800px] overflow-y-auto custom-scrollbar">
+      <div ref={scrollRef} className="frost-panel rounded-3xl p-4 md:p-6 min-h-[360px] max-h-[720px] overflow-y-auto custom-scrollbar">
         {activeTab === 'PLAYERS' && (
-          <div className="space-y-6">
-             <div className="flex justify-between items-center mb-4 px-2">
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-                  Mostrando {Math.min(visibleCount, participants.length)} de {participants.length}
-                </span>
-             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {visibleParticipants.map((p) => (
-                <div key={p.id} className="bg-gray-800/40 hover:bg-gray-800/60 transition-colors p-4 rounded-xl border border-gray-700/50 hover:border-pink-500/30 text-sm flex items-center justify-between gap-3 group relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-pink-500 to-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <div className="flex flex-col overflow-hidden gap-1">
-                    <span className="font-bold text-pink-400 truncate text-base leading-tight">{p.name}</span>
+          <>
+            <p className="text-[11px] font-bold text-snow/45 uppercase tracking-widest mb-4 px-1">
+              Mostrando {Math.min(visibleCount, participants.length)} de {participants.length}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {participants.slice(0, visibleCount).map(p => (
+                <div key={p.id} className="group relative flex items-center justify-between gap-2 rounded-xl bg-night-950/60 border border-night-700 hover:border-holly-400/50 p-3.5 transition-colors">
+                  <div className="min-w-0">
+                    <p className="font-display font-semibold text-snow truncate">{p.name}</p>
                     {p.colonia && (
-                      <div className="flex items-center gap-1.5 text-gray-400 group-hover:text-gray-300 transition-colors">
-                        <MapPin className="w-3 h-3 shrink-0" />
-                        <span className="text-[11px] font-medium truncate uppercase tracking-wider">{p.colonia}</span>
-                      </div>
+                      <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-snow/50 truncate">
+                        <MapPin className="w-3 h-3 shrink-0" /> {p.colonia}
+                      </p>
                     )}
                   </div>
-                  <button onClick={() => handleRemoveParticipant(p.id)} className="text-gray-600 hover:text-rose-500 hover:bg-rose-500/10 p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveParticipant(p.id)}
+                    disabled={locked}
+                    aria-label={`Quitar a ${p.name}`}
+                    className={`${actionBtn} text-snow/40 hover:text-berry-400 hover:bg-berry-500/10 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100`}
+                  >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
               ))}
-              {participants.length === 0 && <p className="col-span-full text-center py-20 text-gray-600 font-bold uppercase tracking-widest text-xs">No hay participantes</p>}
             </div>
-            {/* Sentinel for IntersectionObserver */}
-            {participants.length > visibleCount && (
-               <div ref={observerTarget} className="h-10 w-full flex items-center justify-center">
-                 <div className="w-6 h-6 border-2 border-pink-500/30 border-t-pink-500 rounded-full animate-spin"></div>
-               </div>
-            )}
-          </div>
+            {participants.length === 0 && <Empty text="No hay participantes" />}
+          </>
         )}
 
         {activeTab === 'WINNERS' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {visibleWinners.map(w => (
-              <div key={w.id} className="bg-rose-950/20 border border-pink-500/30 p-5 rounded-2xl flex justify-between items-center group relative overflow-hidden hover:bg-rose-900/30 transition-all">
-                <div className="relative z-10">
-                  <h4 className="text-xl font-black text-white leading-tight mb-1">{w.name}</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {winners.slice(0, visibleCount).map(w => (
+              <div key={`${w.id}-${+new Date(w.timestamp)}`} className="relative overflow-hidden rounded-2xl border border-gold-400/35 bg-[linear-gradient(135deg,rgba(249,199,79,0.12),rgba(15,107,57,0.12))] p-4 flex items-center justify-between gap-3">
+                <Gift className="absolute -right-3 -bottom-4 w-24 h-24 text-gold-400/10 rotate-[-12deg] pointer-events-none" />
+                <div className="relative min-w-0">
+                  <p className="font-display font-bold text-lg text-snow leading-tight break-words">{w.name}</p>
                   {w.colonia && (
-                    <div className="flex items-center gap-1.5 text-pink-200/60 mb-3">
-                      <MapPin className="w-3 h-3" />
-                      <p className="text-xs font-medium uppercase tracking-wider">{w.colonia}</p>
-                    </div>
+                    <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-snow/50 mb-2">
+                      <MapPin className="w-3 h-3" /> {w.colonia}
+                    </p>
                   )}
-                  <div className="inline-flex items-center gap-2 bg-pink-500/10 px-3 py-1.5 rounded-lg border border-pink-500/20">
-                    <Trophy className="w-3 h-3 text-yellow-400" />
-                    <span className="text-xs font-bold text-pink-300 uppercase tracking-widest">{w.prize}</span>
-                  </div>
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-gold-400/15 border border-gold-400/30 px-2.5 py-1 text-xs font-bold text-gold-200">
+                    <Gift className="w-3.5 h-3.5" /> {w.prize}
+                  </span>
                 </div>
-                <div className="flex flex-col items-end gap-2 relative z-20">
-                    <button onClick={() => handleReturnToWheel(w.id, 'WINNERS')} className="text-gray-500 hover:text-white bg-gray-900/50 hover:bg-pink-500 p-2 rounded-full transition-all" title="Regresar a la ruleta">
-                        <X className="w-4 h-4" />
-                    </button>
-                    <Trophy className="w-24 h-24 text-yellow-400 rotate-[-15deg] opacity-10 pointer-events-none absolute top-4 right-[-10px]" />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => handleReturnToWheel(w.id, 'WINNERS')}
+                  disabled={locked}
+                  title="Regresar a la ruleta (el premio vuelve a la lista)"
+                  aria-label={`Regresar a ${w.name} a la ruleta`}
+                  className={`${actionBtn} relative text-snow/60 bg-night-900/70 hover:bg-holly-600 hover:text-white`}
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
               </div>
             ))}
-            {winners.length === 0 && <p className="col-span-full text-center py-20 text-gray-600 font-bold uppercase tracking-widest text-xs">No hay ganadores aún</p>}
-            {winners.length > visibleCount && <div ref={observerTarget} className="h-10"></div>}
+            {winners.length === 0 && <Empty text="No hay ganadores aún" />}
           </div>
         )}
 
         {activeTab === 'ELIMINATED' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {visibleEliminated.map(e => (
-              <div key={e.id} className="bg-rose-950/10 border border-rose-500/20 p-5 rounded-2xl flex justify-between items-center opacity-70 hover:opacity-100 transition-all group relative overflow-hidden hover:bg-rose-950/20">
-                <div className="relative z-10">
-                  <h4 className="text-lg font-bold text-gray-300 group-hover:text-white transition-colors">{e.name}</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {eliminated.slice(0, visibleCount).map(e => (
+              <div key={`${e.id}-${+new Date(e.timestamp)}`} className="rounded-2xl border border-sky-300/20 bg-night-950/50 p-4 flex items-center justify-between gap-3 opacity-80 hover:opacity-100 transition-opacity">
+                <div className="min-w-0">
+                  <p className="font-display font-semibold text-snow/85 break-words">{e.name}</p>
                   {e.colonia && (
-                    <div className="flex items-center gap-1.5 text-gray-600 group-hover:text-rose-400/80 mb-2 transition-colors">
-                      <MapPin className="w-3 h-3" />
-                      <p className="text-xs font-medium uppercase tracking-wider">{e.colonia}</p>
-                    </div>
+                    <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-snow/45 mb-2">
+                      <MapPin className="w-3 h-3" /> {e.colonia}
+                    </p>
                   )}
-                  <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest border border-rose-500/30 px-2 py-1 rounded-md bg-rose-500/10">ELIMINADO</span>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold tracking-widest text-sky-200 border border-sky-300/30 rounded-md px-2 py-0.5 bg-sky-300/10">
+                    <Snowflake className="w-3 h-3" /> ELIMINADO
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button onClick={() => handleReturnToWheel(e.id, 'ELIMINATED')} className="text-gray-500 hover:text-white bg-gray-900/50 hover:bg-rose-500 p-2 rounded-full transition-all" title="Regresar a la ruleta">
-                        <X className="w-4 h-4" />
-                    </button>
-                    <Trash2 className="w-6 h-6 text-rose-500/50 group-hover:text-rose-500 transition-colors pointer-events-none" />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => handleReturnToWheel(e.id, 'ELIMINATED')}
+                  disabled={locked}
+                  title="Regresar a la ruleta"
+                  aria-label={`Regresar a ${e.name} a la ruleta`}
+                  className={`${actionBtn} text-snow/60 bg-night-900/70 hover:bg-holly-600 hover:text-white`}
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
               </div>
             ))}
-            {eliminated.length === 0 && <p className="col-span-full text-center py-20 text-gray-600 font-bold uppercase tracking-widest text-xs">No hay eliminados</p>}
-             {eliminated.length > visibleCount && <div ref={observerTarget} className="h-10"></div>}
+            {eliminated.length === 0 && <Empty text="No hay eliminados" />}
+          </div>
+        )}
+
+        {total > visibleCount && (
+          <div ref={sentinelRef} className="h-12 flex items-center justify-center">
+            <div className="w-6 h-6 border-2 border-gold-400/30 border-t-gold-400 rounded-full animate-spin" />
           </div>
         )}
       </div>
     </div>
   );
 });
+
+const Empty = ({ text }: { text: string }) => (
+  <p className="col-span-full text-center py-20 text-snow/35 font-bold uppercase tracking-widest text-xs">{text}</p>
+);
 
 export default Dashboard;

@@ -1,27 +1,24 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ruleta Día de las Madres - La Burbuja Feliz</title>
+  <meta name="theme-color" content="#050a1a" />
+  <title>Ruleta Navideña - La Burbuja Feliz</title>
   <link rel="icon" type="image/png" href="/favicon.png" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- pdf.js solo se usa para importar participantes desde PDF (eso ya requiere internet por la IA). -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
   <script>
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    window.addEventListener('load', function () {
+      if (window.pdfjsLib) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+    });
   </script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
-    body {
-      font-family: 'Inter', sans-serif;
-    }
-  </style>
-  <link rel="stylesheet" href="/index.css">
 </head>
 
-<body class="bg-gray-950 text-gray-100 selection:bg-indigo-500 selection:text-white">
+<body>
   <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>

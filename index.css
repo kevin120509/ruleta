@@ -2,27 +2,127 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom Scrollbar */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-}
+/*
+ * Regla de rendimiento: las animaciones de este archivo solo mueven `transform` y `opacity`,
+ * que la tarjeta gráfica anima sin repintar la página. Nada de blur/backdrop-filter animados.
+ */
 
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(31, 41, 55, 0.5);
-  border-radius: 4px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(75, 85, 99, 0.8);
-  border-radius: 4px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(107, 114, 128, 1);
-}
-
+html,
 body {
-  background-color: #030712; /* gray-950 */
-  color: #f3f4f6; /* gray-100 */
+  background-color: #050a1a;
+  color: #f4f8ff;
+  font-family: 'Nunito', system-ui, sans-serif;
   overflow-x: hidden;
+}
+
+::selection {
+  background: #e63946;
+  color: #fff;
+}
+
+/* Barra de scroll */
+.custom-scrollbar::-webkit-scrollbar { width: 8px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: rgba(10, 20, 48, 0.6); border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(249, 199, 79, 0.35); border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(249, 199, 79, 0.6); }
+
+/* Paneles tipo "vidrio escarchado" sin backdrop-filter (que era la causa del lag). */
+.frost-panel {
+  background: linear-gradient(160deg, rgba(17, 32, 74, 0.92), rgba(8, 16, 40, 0.94));
+  border: 1px solid rgba(249, 199, 79, 0.18);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* Texto dorado */
+.text-gold-gradient {
+  background: linear-gradient(180deg, #fff6d6 0%, #ffe08a 40%, #e9a923 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------- Animaciones ---------- */
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+.twinkle { animation: twinkle 2.6s ease-in-out infinite; }
+
+/* Focos de la ruleta: dos grupos que se alternan */
+@keyframes bulb-a { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+@keyframes bulb-b { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+.bulb-a { animation: bulb-a 1.4s ease-in-out infinite; }
+.bulb-b { animation: bulb-b 1.4s ease-in-out infinite; }
+.is-spinning .bulb-a { animation-duration: 0.28s; }
+.is-spinning .bulb-b { animation-duration: 0.28s; }
+
+/* Santa cruzando el cielo */
+@keyframes santa-fly {
+  0% { transform: translate3d(-40vw, 6vh, 0) rotate(-4deg); }
+  50% { transform: translate3d(55vw, -2vh, 0) rotate(2deg); }
+  100% { transform: translate3d(140vw, 4vh, 0) rotate(-3deg); }
+}
+.santa-fly {
+  animation: santa-fly 38s linear infinite;
+  will-change: transform;
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.bob { animation: bob 1.6s ease-in-out infinite; }
+.bob-delay { animation: bob 1.6s ease-in-out 0.4s infinite; }
+
+/* Muñeco de nieve saludando */
+@keyframes wave-arm {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-18deg); }
+}
+.wave-arm { animation: wave-arm 1.8s ease-in-out infinite; transform-box: fill-box; transform-origin: 0% 100%; }
+
+/* Adornos colgantes */
+@keyframes swing {
+  0%, 100% { transform: rotate(-6deg); }
+  50% { transform: rotate(6deg); }
+}
+.swing { animation: swing 3.2s ease-in-out infinite; transform-origin: 50% 0%; }
+
+/* Brillo suave que respira (solo opacidad) */
+@keyframes breathe { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+.breathe { animation: breathe 3s ease-in-out infinite; }
+
+/* Botón principal: destello que cruza */
+@keyframes shine {
+  0% { transform: translateX(-120%) skewX(-20deg); }
+  60%, 100% { transform: translateX(220%) skewX(-20deg); }
+}
+.btn-shine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: shine 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Puntero que "patea" en cada rebanada */
+.pointer-kick { transform-origin: 50% 20%; }
+
+/* Rayos de luz detrás del ganador */
+@keyframes rays-rotate { to { transform: rotate(360deg); } }
+.rays { animation: rays-rotate 14s linear infinite; }
+
+/* Modo ligero: la escena queda como imagen fija; solo se mueve la ruleta. */
+.lite .santa-fly, .lite .twinkle, .lite .bulb-a, .lite .bulb-b, .lite .bob, .lite .bob-delay,
+.lite .wave-arm, .lite .swing, .lite .breathe, .lite .rays, .lite .btn-shine::after {
+  animation: none !important;
+}
+.lite .santa-fly { transform: translate3d(8vw, 2vh, 0) rotate(-3deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .santa-fly, .twinkle, .bulb-a, .bulb-b, .bob, .bob-delay, .wave-arm, .swing, .breathe, .rays, .btn-shine::after {
+    animation: none !important;
+  }
 }
