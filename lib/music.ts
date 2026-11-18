@@ -68,7 +68,7 @@ export class ChristmasMusic {
   private songIdx = 0;
   private nextSongAt = 0;
   private queue: { at: number; fn: (t: number) => void }[] = [];
-  private baseVolume = 0.22;
+  private baseVolume = 0.42;
   playing = false;
 
   constructor(ctx: AudioContext) {

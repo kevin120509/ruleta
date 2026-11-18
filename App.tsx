@@ -133,18 +133,25 @@ export default function App() {
           setAudioReady(true);
           if (wantMusicRef.current) musicRef.current?.start();
         };
-        if (ctx.state === 'suspended') ctx.resume().then(go, () => undefined);
-        else go();
+        if (ctx.state === 'running') go();
+        else ctx.resume().then(() => { if (ctx.state === 'running') go(); }, () => undefined);
       } catch {
         /* sin audio */
       }
     };
-    window.addEventListener('pointerdown', unlock);
-    window.addEventListener('keydown', unlock);
-    return () => {
-      window.removeEventListener('pointerdown', unlock);
-      window.removeEventListener('keydown', unlock);
-    };
+    // Si el navegador ya permite sonido (sitio usado antes), la música arranca sola al abrir.
+    unlock();
+    const events = ['pointerdown', 'touchend', 'click', 'keydown'] as const;
+    events.forEach(e => window.addEventListener(e, unlock, { passive: true }));
+    return () => events.forEach(e => window.removeEventListener(e, unlock));
+  }, []);
+  // Diagnóstico desde la consola: window.__ruletaAudio()
+  useEffect(() => {
+    (window as any).__ruletaAudio = () => ({
+      ctx: audioCtxRef.current?.state ?? 'sin crear',
+      musica: !!musicRef.current?.playing,
+      quiereMusica: wantMusicRef.current,
+    });
   }, []);
 
   // Música navideña: arranca con el primer toque (regla del navegador) y responde al botón y al silencio.
@@ -534,6 +541,15 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {/* Aviso: el navegador exige un toque antes de dejar sonar la música */}
+      {!audioReady && musicOn && !muted && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[60] pointer-events-none" data-testid="music-hint">
+          <div className="breathe flex items-center gap-2 px-5 py-2.5 rounded-full bg-holly-700/90 border border-gold-400/50 text-snow font-extrabold text-sm shadow-lg">
+            <Music className="w-4 h-4 text-gold-300" /> Toca la pantalla para escuchar la música navideña
+          </div>
+        </div>
+      )}
 
       {/* ESCENARIO: ruleta + controles */}
       <section className="relative z-10 w-full flex-1 flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-12 px-4 pb-6 pt-6 lg:pt-2 min-h-[calc(100vh-72px)]">
