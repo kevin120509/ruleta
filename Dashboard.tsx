@@ -71,10 +71,10 @@ const Dashboard = memo(({
               type="button"
               key={tab.id}
               onClick={() => { playSound('pop'); setActiveTab(tab.id); }}
-              className={`flex-1 sm:flex-none px-3 sm:px-5 py-2.5 text-[11px] sm:text-xs font-extrabold rounded-xl tracking-wider transition-colors flex items-center justify-center gap-2 ${activeTab === tab.id ? 'bg-berry-600 text-white shadow-lg shadow-berry-900/40' : 'text-snow/55 hover:text-snow'}`}
+              className={`flex-1 sm:flex-none px-3 sm:px-5 py-2.5 text-[0.6875rem] sm:text-xs font-extrabold rounded-xl tracking-wider transition-colors flex items-center justify-center gap-2 ${activeTab === tab.id ? 'bg-berry-600 text-white shadow-lg shadow-berry-900/40' : 'text-snow/55 hover:text-snow'}`}
             >
               {tab.label}
-              <span className={`min-w-[1.5rem] px-1.5 py-0.5 rounded-full text-[10px] ${activeTab === tab.id ? 'bg-white/20' : 'bg-night-800'}`}>{tab.count}</span>
+              <span className={`min-w-[1.5rem] px-1.5 py-0.5 rounded-full text-[0.625rem] ${activeTab === tab.id ? 'bg-white/20' : 'bg-night-800'}`}>{tab.count}</span>
             </button>
           ))}
         </div>
@@ -83,7 +83,7 @@ const Dashboard = memo(({
             type="button"
             onClick={handleClearHistory}
             disabled={locked}
-            className="text-[11px] font-bold tracking-widest text-snow/50 hover:text-berry-400 flex items-center gap-1.5 disabled:opacity-30"
+            className="text-[0.6875rem] font-bold tracking-widest text-snow/50 hover:text-berry-400 flex items-center gap-1.5 disabled:opacity-30"
           >
             <Trash2 className="w-3.5 h-3.5" /> LIMPIAR HISTORIAL
           </button>
@@ -93,7 +93,7 @@ const Dashboard = memo(({
       <div ref={scrollRef} className="frost-panel rounded-3xl p-4 md:p-6 min-h-[360px] max-h-[720px] overflow-y-auto custom-scrollbar">
         {activeTab === 'PLAYERS' && (
           <>
-            <p className="text-[11px] font-bold text-snow/45 uppercase tracking-widest mb-4 px-1">
+            <p className="text-[0.6875rem] font-bold text-snow/45 uppercase tracking-widest mb-4 px-1">
               Mostrando {Math.min(visibleCount, participants.length)} de {participants.length}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -102,7 +102,7 @@ const Dashboard = memo(({
                   <div className="min-w-0">
                     <p className="font-display font-semibold text-snow truncate">{p.name}</p>
                     {p.colonia && (
-                      <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-snow/50 truncate">
+                      <p className="flex items-center gap-1 text-[0.6875rem] font-semibold uppercase tracking-wider text-snow/50 truncate">
                         <MapPin className="w-3 h-3 shrink-0" /> {p.colonia}
                       </p>
                     )}
@@ -131,7 +131,7 @@ const Dashboard = memo(({
                 <div className="relative min-w-0">
                   <p className="font-display font-bold text-lg text-snow leading-tight break-words">{w.name}</p>
                   {w.colonia && (
-                    <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-snow/50 mb-2">
+                    <p className="flex items-center gap-1 text-[0.6875rem] font-semibold uppercase tracking-wider text-snow/50 mb-2">
                       <MapPin className="w-3 h-3" /> {w.colonia}
                     </p>
                   )}
@@ -162,11 +162,11 @@ const Dashboard = memo(({
                 <div className="min-w-0">
                   <p className="font-display font-semibold text-snow/85 break-words">{e.name}</p>
                   {e.colonia && (
-                    <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-snow/45 mb-2">
+                    <p className="flex items-center gap-1 text-[0.6875rem] font-semibold uppercase tracking-wider text-snow/45 mb-2">
                       <MapPin className="w-3 h-3" /> {e.colonia}
                     </p>
                   )}
-                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold tracking-widest text-sky-200 border border-sky-300/30 rounded-md px-2 py-0.5 bg-sky-300/10">
+                  <span className="inline-flex items-center gap-1 text-[0.625rem] font-extrabold tracking-widest text-sky-200 border border-sky-300/30 rounded-md px-2 py-0.5 bg-sky-300/10">
                     <Snowflake className="w-3 h-3" /> ELIMINADO
                   </span>
                 </div>

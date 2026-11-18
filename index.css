@@ -126,3 +126,8 @@ body {
     animation: none !important;
   }
 }
+
+/* Pantallas gigantes (TV 4K sin escalar): todo crece en proporción, como si fuera Full HD. */
+@media (min-width: 2000px) {
+  html { font-size: 0.8333vw; }
+}

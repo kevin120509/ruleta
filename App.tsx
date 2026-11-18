@@ -7,6 +7,7 @@ import {
   Gift,
   Loader2,
   MapPin,
+  Music,
   Snowflake,
   Sparkles,
   Trash2,
@@ -23,6 +24,7 @@ import { Wheel, WheelHandle } from './components/Wheel';
 import { loadJSON, reviveDates, saveJSON } from './lib/storage';
 import { secureRandomInt } from './lib/spin';
 import { detectLowPowerGraphics } from './lib/perf';
+import { ChristmasMusic, makeNoise, playClack, playSpinStart } from './lib/music';
 import fallaMp3 from './sonido/falla.mp3';
 import winMp3 from './sonido/premiado.mp3';
 import { extractParticipantsFromText } from './gemini';
@@ -36,7 +38,7 @@ const KEY_MUTED = 'ruleta_muted';
 const KEY_EFFECTS = 'ruleta_effects';
 
 type Tab = 'PLAYERS' | 'WINNERS' | 'ELIMINATED';
-type SoundType = 'pop' | 'tick' | 'win' | 'elimination';
+type SoundType = 'pop' | 'tick' | 'spin' | 'win' | 'elimination';
 interface Toast { id: number; text: string; tone: 'info' | 'error' | 'success' }
 
 const newId = () =>
@@ -69,6 +71,8 @@ export default function App() {
   useEffect(() => saveJSON(KEY_WINNERS, winners), [winners]);
   useEffect(() => saveJSON(KEY_ELIMINATED, eliminated), [eliminated]);
   useEffect(() => saveJSON(KEY_MUTED, muted), [muted]);
+  const [musicOn, setMusicOn] = useState<boolean>(() => loadJSON<boolean>('ruleta_music', true));
+  useEffect(() => saveJSON('ruleta_music', musicOn), [musicOn]);
 
   // --- Estado de la sesión ---
   const [mode, setMode] = useState<GameMode>(GameMode.IDLE);
@@ -104,6 +108,11 @@ export default function App() {
   const lastTickRef = useRef(0);
   const mutedRef = useRef(muted);
   mutedRef.current = muted;
+  const musicRef = useRef<ChristmasMusic | null>(null);
+  const noiseRef = useRef<AudioBuffer | null>(null);
+  const wantMusicRef = useRef(musicOn && !muted);
+  wantMusicRef.current = musicOn && !muted;
+  const [audioReady, setAudioReady] = useState(false);
 
   useEffect(() => {
     winAudioRef.current = new Audio(winMp3);
@@ -117,7 +126,15 @@ export default function App() {
           const Ctx = window.AudioContext || (window as any).webkitAudioContext;
           audioCtxRef.current = new Ctx();
         }
-        if (audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume();
+        const ctx = audioCtxRef.current;
+        if (!noiseRef.current) noiseRef.current = makeNoise(ctx, 0.3);
+        if (!musicRef.current) musicRef.current = new ChristmasMusic(ctx);
+        const go = () => {
+          setAudioReady(true);
+          if (wantMusicRef.current) musicRef.current?.start();
+        };
+        if (ctx.state === 'suspended') ctx.resume().then(go, () => undefined);
+        else go();
       } catch {
         /* sin audio */
       }
@@ -129,6 +146,14 @@ export default function App() {
       window.removeEventListener('keydown', unlock);
     };
   }, []);
+
+  // Música navideña: arranca con el primer toque (regla del navegador) y responde al botón y al silencio.
+  useEffect(() => {
+    if (!audioReady || !musicRef.current) return;
+    if (musicOn && !muted) musicRef.current.start();
+    else musicRef.current.stop();
+  }, [audioReady, musicOn, muted]);
+  useEffect(() => () => musicRef.current?.stop(), []);
 
   const playSound = useCallback((type: SoundType) => {
     if (mutedRef.current) return;
@@ -148,6 +173,14 @@ export default function App() {
         const now = performance.now();
         if (now - lastTickRef.current < 45) return;
         lastTickRef.current = now;
+        if (noiseRef.current) {
+          playClack(ctx, noiseRef.current);
+          return;
+        }
+      }
+      if (type === 'spin') {
+        if (noiseRef.current) playSpinStart(ctx, noiseRef.current);
+        return;
       }
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -213,9 +246,14 @@ export default function App() {
     spinListRef.current = participants;
     const spinning = wheelRef.current.spin();
     if (!spinning) return;
-    playSound('pop');
+    playSound('spin');
+    musicRef.current?.duck(true);
     setMode(GameMode.SPINNING);
     const index = await spinning;
+    // La música vuelve poco a poco después del sonido de premio.
+    window.setTimeout(() => {
+      if (!wheelRef.current?.isSpinning()) musicRef.current?.duck(false);
+    }, 3500);
     const person = spinListRef.current[index];
     if (!person) {
       setMode(GameMode.IDLE);
@@ -472,6 +510,21 @@ export default function App() {
           </button>
           <button
             type="button"
+            onClick={() => {
+              const next = !musicOn;
+              setMusicOn(next);
+              if (next && muted) setMuted(false);
+              toast(next ? 'Música navideña encendida.' : 'Música apagada.', 'info');
+            }}
+            className={`h-10 px-3 rounded-full border flex items-center gap-1.5 text-xs font-extrabold transition-colors ${musicOn && !muted ? 'bg-holly-500/20 border-holly-400/50 text-snow hover:bg-holly-500/30' : 'bg-night-900/80 border-night-700 text-snow/60 hover:bg-night-800'}`}
+            title={musicOn ? 'Apagar música navideña' : 'Encender música navideña'}
+            aria-label={musicOn ? 'Apagar música navideña' : 'Encender música navideña'}
+            data-testid="music-button"
+          >
+            <Music className="w-4 h-4" /> <span className="hidden sm:inline">{musicOn && !muted ? 'MÚSICA' : 'SIN MÚSICA'}</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setMuted(m => !m)}
             className="w-10 h-10 rounded-full bg-night-900/80 border border-gold-400/25 flex items-center justify-center hover:bg-night-800 transition-colors"
             aria-label={muted ? 'Activar sonido' : 'Silenciar'}
@@ -486,18 +539,18 @@ export default function App() {
       <section className="relative z-10 w-full flex-1 flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-12 px-4 pb-6 pt-6 lg:pt-2 min-h-[calc(100vh-72px)]">
         <h2 className="md:hidden font-xmas font-bold text-4xl text-gold-gradient -mt-2">¡Feliz Navidad!</h2>
 
-        <div className="w-[min(90vw,540px)] lg:w-[min(76vh,46vw,680px)] shrink-0 pt-4">
+        <div className="w-[min(90vw,540px)] lg:w-[min(76vh,46vw,680px)] min-[2000px]:w-[min(76vh,46vw)] shrink-0 pt-4">
           <Wheel ref={wheelRef} participants={participants} onTick={handleTick} />
         </div>
 
         <div className="w-full max-w-md frost-panel rounded-[28px] p-5 md:p-6 flex flex-col gap-5">
-          <p className={`text-center text-[11px] font-extrabold uppercase tracking-[0.3em] ${mode === GameMode.SPINNING ? 'text-gold-300 breathe' : 'text-snow/60'}`}>
+          <p className={`text-center text-[0.6875rem] font-extrabold uppercase tracking-[0.3em] ${mode === GameMode.SPINNING ? 'text-gold-300 breathe' : 'text-snow/60'}`}>
             {statusText}
           </p>
 
           {/* Nombre en la flecha */}
           <div className="relative rounded-2xl bg-night-950/70 border border-gold-400/20 px-4 py-4 text-center overflow-hidden" aria-live="off">
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-gold-300/80 mb-1">En la flecha</p>
+            <p className="text-[0.625rem] font-extrabold uppercase tracking-[0.3em] text-gold-300/80 mb-1">En la flecha</p>
             <p ref={tickerNameRef} className="font-display font-bold text-2xl md:text-3xl leading-tight text-snow truncate" data-testid="ticker-name">
               {participants.length ? '¿Quién será?' : 'Sin participantes'}
             </p>
@@ -530,12 +583,12 @@ export default function App() {
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                 {!showAllPrizes ? (
                   <div className="relative text-center p-4 rounded-2xl bg-[linear-gradient(135deg,rgba(193,18,31,0.35),rgba(15,107,57,0.35))] border border-gold-400/30">
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-gold-300/80">Premio en juego</p>
+                    <p className="text-[0.625rem] font-extrabold uppercase tracking-[0.3em] text-gold-300/80">Premio en juego</p>
                     <p className="font-display font-bold text-xl text-gold-200 mt-1 break-words">{prizeName}</p>
                     <button
                       type="button"
                       onClick={() => { playSound('pop'); setShowAllPrizes(true); }}
-                      className="mt-2 text-[11px] font-bold uppercase tracking-widest text-snow/70 hover:text-snow underline underline-offset-4"
+                      className="mt-2 text-[0.6875rem] font-bold uppercase tracking-widest text-snow/70 hover:text-snow underline underline-offset-4"
                     >
                       Cambiar premio
                     </button>
@@ -569,10 +622,10 @@ export default function App() {
           >
             {mode === GameMode.SPINNING ? 'GIRANDO…' : '¡GIRAR!'}
           </button>
-          <p className="text-center text-[11px] text-snow/45 -mt-2">
+          <p className="text-center text-[0.6875rem] text-snow/45 -mt-2">
             Atajo: <kbd className="px-1.5 py-0.5 rounded bg-night-800 border border-night-700 text-snow/70">Espacio</kbd> para girar
           </p>
-          <a href="#gestion" className="-mt-2 flex items-center justify-center gap-1 text-[11px] font-bold tracking-widest text-snow/50 hover:text-snow/85 transition-colors">
+          <a href="#gestion" className="-mt-2 flex items-center justify-center gap-1 text-[0.6875rem] font-bold tracking-widest text-snow/50 hover:text-snow/85 transition-colors">
             LISTAS Y GESTIÓN <ChevronDown className="w-4 h-4 bob" />
           </a>
         </div>
@@ -615,12 +668,12 @@ export default function App() {
               >
                 AGREGAR MANUALMENTE
               </button>
-              <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-snow/40">
+              <div className="flex items-center gap-3 text-[0.625rem] font-bold uppercase tracking-widest text-snow/40">
                 <div className="h-px flex-1 bg-night-700" /> o importar <div className="h-px flex-1 bg-night-700" />
               </div>
               <label className={`flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-xl transition-colors ${isExtractingPDF || locked ? 'border-night-700 opacity-60 cursor-wait' : 'border-night-700 hover:border-gold-400/60 hover:bg-gold-400/5 cursor-pointer'}`}>
                 {isExtractingPDF ? <Loader2 className="w-6 h-6 text-gold-300 mb-2 animate-spin" /> : <FileText className="w-6 h-6 text-snow/50 mb-2" />}
-                <span className="text-[11px] font-bold uppercase tracking-widest text-snow/60">
+                <span className="text-[0.6875rem] font-bold uppercase tracking-widest text-snow/60">
                   {isExtractingPDF ? 'Leyendo PDF con IA…' : 'Subir PDF'}
                 </span>
                 <input type="file" accept=".pdf,application/pdf" onChange={handlePdfUpload} disabled={isExtractingPDF || locked} className="hidden" />
@@ -733,7 +786,7 @@ export default function App() {
                   )}
                   {resultIsPrize && prizeName && (
                     <div className="mt-4 pt-4 border-t border-white/10">
-                      <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-snow/50">Premio</p>
+                      <p className="text-[0.625rem] font-extrabold uppercase tracking-[0.3em] text-snow/50">Premio</p>
                       <p className="font-display font-bold text-2xl text-gold-300 break-words">{prizeName}</p>
                     </div>
                   )}
@@ -756,7 +809,7 @@ export default function App() {
                     ACEPTAR
                   </button>
                 </div>
-                <p className="mt-3 text-[11px] text-snow/45">
+                <p className="mt-3 text-[0.6875rem] text-snow/45">
                   Rechazar = la persona sigue en la ruleta · <kbd className="px-1 rounded bg-night-800">Enter</kbd> aceptar · <kbd className="px-1 rounded bg-night-800">Esc</kbd> rechazar
                 </p>
               </div>
