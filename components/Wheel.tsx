@@ -27,10 +27,20 @@ interface WheelProps {
 }
 
 /** Elige el color de cada rebanada evitando que dos vecinas (incluida la última con la primera) repitan. */
+// Con muchísimas personas cada rebanada mide 1-3 px y los colores se mezclan en un dorado borroso.
+// Entonces se pintan en franjas de varias rebanadas seguidas del mismo color (la flecha sigue eligiendo una sola persona).
+const BAND_THRESHOLD = 240;
+export function bandSize(len: number): number {
+  return len > BAND_THRESHOLD ? Math.ceil(len / 48) : 1;
+}
+
 function sliceColorIndex(i: number, len: number): number {
   const n = WHEEL_COLORS.length;
-  let c = i % n;
-  if (len > 1 && i === len - 1 && c === 0) c = (len - 2) % n === 1 ? 2 : 1;
+  const g = bandSize(len);
+  const bands = Math.ceil(len / g);
+  const b = Math.floor(i / g);
+  let c = b % n;
+  if (bands > 1 && b === bands - 1 && c === 0) c = (bands - 2) % n === 1 ? 2 : 1;
   return c;
 }
 
@@ -81,11 +91,13 @@ function drawWheel(canvas: HTMLCanvasElement, participants: Participant[]) {
   }
 
   // Divisiones doradas (si hay demasiadas rebanadas se vuelven ruido: se adelgazan).
+  // Con muchas personas solo se dibuja la línea entre franjas, no entre cada rebanada.
   if (len > 1) {
-    ctx.strokeStyle = len > 160 ? 'rgba(196,134,15,0.35)' : 'rgba(196,134,15,0.85)';
-    ctx.lineWidth = len > 80 ? 1.5 : 3;
+    const g = bandSize(len);
+    ctx.strokeStyle = len > 160 && g === 1 ? 'rgba(196,134,15,0.35)' : 'rgba(196,134,15,0.85)';
+    ctx.lineWidth = len > 80 && g === 1 ? 1.5 : 3;
     ctx.beginPath();
-    for (let i = 0; i < len; i++) {
+    for (let i = 0; i < len; i += g) {
       const a = i * arc;
       ctx.moveTo(c, c);
       ctx.lineTo(c + Math.cos(a) * RADIUS, c + Math.sin(a) * RADIUS);

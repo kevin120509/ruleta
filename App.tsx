@@ -278,7 +278,10 @@ export default function App() {
     }
   }, [participants, mode, prizeName, toast, playSound, celebrate]);
 
+  // Al cerrar el resultado, el recuadro "En la flecha" vuelve a "¿Quién será?" (la persona ya salió de la ruleta).
+  const [tickerKey, setTickerKey] = useState(0);
   const closeModal = useCallback(() => {
+    setTickerKey(k => k + 1);
     setSelectedResult(null);
     setMode(GameMode.IDLE);
     setPrizeName('');
@@ -364,14 +367,31 @@ export default function App() {
   }, [mode, startSpin, confirmResult, rejectResult]);
 
   // --- Gestión de jugadores y premios ---
+  // Evita repetidos: si pegan la lista dos veces (o alguien que ya ganó o salió), no se duplica su oportunidad.
+  const normKey = (name: string, colonia: string) =>
+    `${name}|${colonia}`.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const addUniqueParticipants = (list: Participant[]) => {
+    const seen = new Set([...participants, ...winners, ...eliminated].map(p => normKey(p.name, p.colonia)));
+    const fresh = list.filter(p => {
+      const k = normKey(p.name, p.colonia);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    if (fresh.length) setParticipants(prev => [...prev, ...fresh]);
+    const skipped = list.length - fresh.length;
+    const msg = (fresh.length === 1 ? "Se agregó 1 participante." : `Se agregaron ${fresh.length} participantes.`) + (skipped === 1 ? ' 1 repetido no se agregó.' : skipped ? ` ${skipped} repetidos no se agregaron.` : '');
+    toast(msg, fresh.length ? 'success' : 'info');
+    return fresh.length;
+  };
+
   const handleManualImport = () => {
     if (locked) return;
     const names = manualInput.split('\n').map(n => n.trim()).filter(Boolean);
     if (!names.length) return;
     playSound('pop');
-    setParticipants(prev => [...prev, ...names.map(name => ({ id: newId(), name, colonia: '' }))]);
+    addUniqueParticipants(names.map(name => ({ id: newId(), name, colonia: '' })));
     setManualInput('');
-    toast(`Se agregaron ${names.length} participante${names.length === 1 ? '' : 's'}.`, 'success');
   };
 
   const handlePrizeImport = () => {
@@ -451,8 +471,7 @@ export default function App() {
         .filter((p: any) => p && String(p.name || '').trim())
         .map((p: any) => ({ id: newId(), name: String(p.name).trim(), colonia: String(p.colonia || '').trim() }));
       if (list.length) {
-        setParticipants(prev => [...prev, ...list]);
-        toast(`La IA importó ${list.length} participantes.`, 'success');
+        addUniqueParticipants(list);
       } else {
         toast('La IA no encontró participantes en este PDF.', 'error');
       }
@@ -565,12 +584,12 @@ export default function App() {
           </p>
 
           {/* Nombre en la flecha */}
-          <div className="relative rounded-2xl bg-night-950/70 border border-gold-400/20 px-4 py-4 text-center overflow-hidden" aria-live="off">
+          <div key={tickerKey} className="relative rounded-2xl bg-night-950/70 border border-gold-400/20 px-4 py-4 text-center overflow-hidden" aria-live="off">
             <p className="text-[0.625rem] font-extrabold uppercase tracking-[0.3em] text-gold-300/80 mb-1">En la flecha</p>
-            <p ref={tickerNameRef} className="font-display font-bold text-2xl md:text-3xl leading-tight text-snow truncate" data-testid="ticker-name">
+            <p ref={tickerNameRef} className={`font-display font-bold text-2xl md:text-3xl leading-tight text-snow truncate transition-[filter,opacity] duration-300 ${mode === GameMode.SPINNING ? "ticker-hidden" : ""}`} data-testid="ticker-name">
               {participants.length ? '¿Quién será?' : 'Sin participantes'}
             </p>
-            <p ref={tickerColoniaRef} className="text-xs font-bold uppercase tracking-[0.2em] text-snow/55 mt-1 truncate">&nbsp;</p>
+            <p ref={tickerColoniaRef} className={`text-xs font-bold uppercase tracking-[0.2em] text-snow/55 mt-1 truncate transition-[filter,opacity] duration-300 ${mode === GameMode.SPINNING ? "ticker-hidden" : ""}`}>&nbsp;</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

@@ -131,3 +131,6 @@ body {
 @media (min-width: 2000px) {
   html { font-size: 0.8333vw; }
 }
+
+/* Mientras gira: los nombres pasan borrosos (se nota que cambian, pero no se leen). */
+.ticker-hidden { filter: blur(7px); opacity: 0.45; }
